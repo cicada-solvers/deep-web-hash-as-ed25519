@@ -150,12 +150,42 @@ inline static void ge_initeightpoint(void) {}
 #include <sodium/randombytes.h>
 #include "ed25519-donna/ed25519-donna.h"
 
+///
+int hex2nibble(char c) {
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    else if (c >= 'A' && c <= 'F')
+      return c - 'A';
+    return c - 'a';
+}
+///
+
 static int ed25519_seckey_expand(unsigned char *sk,const unsigned char *seed)
 {
-	crypto_hash_sha512(sk,seed,32);
+///
+#ifndef CUSTOM_HASH
+	const char* LP_HASH = "36367763ab73783c7af284446c59466b4cd653239a311cb7116d4618dee09a8425893dc7500b464fdaf1672d7bef5e891c6e2274568926a49fb4f45132c2a8b4";
+#else
+	#define HASH_STRING(CUSTOM_HASH) #CUSTOM_HASH
+	const char* LP_HASH = HASH_STRING(CUSTOM_HASH);
+#endif
+
+#ifndef REVERSE_ENDIANESS
+	for (int i = 0; i < 64; i++)
+		sk[i] = (hex2nibble(LP_HASH[2*i]) << 4) | hex2nibble(LP_HASH[2*i + 1]);
+#else
+	for (int i = 0; i < 64; i++)
+		sk[63 - i] = (hex2nibble(LP_HASH[2*i]) << 4) | hex2nibble(LP_HASH[2*i + 1]);
+#endif
+
+	/*crypto_hash_sha512(sk,seed,32);*/
+///
+
+#ifndef DONT_ALTER_HASH
 	sk[0] &= 248;
 	sk[31] &= 127;
 	sk[31] |= 64;
+#endif
 
 	return 0;
 }

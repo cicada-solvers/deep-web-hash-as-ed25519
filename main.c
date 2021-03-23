@@ -41,7 +41,10 @@
 #define PWHASH_MEMLIMIT 64 * 1024 * 1024
 #define PWHASH_ALG      crypto_pwhash_ALG_ARGON2ID13
 
-static int quietflag = 0;
+///
+/* Keep quiet */
+static int quietflag = 1;
+///
 static int verboseflag = 0;
 #ifndef PCRE2FILTER
 static int wantdedup = 0;
@@ -220,254 +223,19 @@ int main(int argc,char **argv)
 	setvbuf(stderr,0,_IONBF,0);
 	fout = stdout;
 
-	const char *progname = argv[0];
-	if (argc <= 1) {
-		printhelp(stderr,progname);
-		exit(1);
-	}
-	argc--; argv++;
+///
+	/* Force options : -Z a */
 
-	while (argc--) {
-		arg = *argv++;
-		if (!ignoreargs && *arg == '-') {
-			int numargit = 0;
-		nextarg:
-			++arg;
-			++numargit;
-			if (*arg == '-') {
-				if (numargit > 1) {
-					fprintf(stderr,"unrecognised argument: -\n");
-					exit(1);
-				}
-				++arg;
-				if (!*arg)
-					ignoreargs = 1;
-				else if (!strcmp(arg,"help") || !strcmp(arg,"usage")) {
-					printhelp(stdout,progname);
-					exit(0);
-				}
-				else if (!strcmp(arg,"rawyaml"))
-					yamlraw = 1;
-				else {
-					fprintf(stderr,"unrecognised argument: --%s\n",arg);
-					exit(1);
-				}
-				numargit = 0;
-			}
-			else if (*arg == 0) {
-				if (numargit == 1)
-					ignoreargs = 1;
-				continue;
-			}
-			else if (*arg == 'h') {
-				printhelp(stdout,progname);
-				exit(0);
-			}
-			else if (*arg == 'f') {
-				if (argc--) {
-					if (!loadfilterfile(*argv++))
-						exit(1);
-				}
-				else
-					e_additional();
-			}
-			else if (*arg == 'D') {
-#ifndef PCRE2FILTER
-				wantdedup = 1;
-#else
-				fprintf(stderr,"WARNING: deduplication isn't supported with regex filters\n");
-#endif
-			}
-			else if (*arg == 'q')
-				++quietflag;
-			else if (*arg == 'x')
-				fout = 0;
-			else if (*arg == 'v')
-				verboseflag = 1;
-			else if (*arg == 'o') {
-				outfileoverwrite = 0;
-				if (argc--)
-					outfile = *argv++;
-				else
-					e_additional();
-			}
-			else if (*arg == 'O') {
-				outfileoverwrite = 1;
-				if (argc--)
-					outfile = *argv++;
-				else
-					e_additional();
-			}
-			else if (*arg == 'F')
-				dirnameflag = 1;
-			else if (*arg == 'd') {
-				if (argc--)
-					setworkdir(*argv++);
-				else
-					e_additional();
-			}
-			else if (*arg == 't' || *arg == 'j') {
-				if (argc--)
-					numthreads = atoi(*argv++);
-				else
-					e_additional();
-			}
-			else if (*arg == 'n') {
-				if (argc--)
-					numneedgenerate = (size_t)atoll(*argv++);
-				else
-					e_additional();
-			}
-			else if (*arg == 'N') {
-				if (argc--)
-					numwords = atoi(*argv++);
-				else
-					e_additional();
-			}
-			else if (*arg == 'Z')
-				wt = WT_SLOW;
-			else if (*arg == 'z')
-				wt = WT_FAST;
-			else if (*arg == 'B')
-				wt = WT_BATCH;
-			else if (*arg == 's') {
-#ifdef STATISTICS
-				reportdelay = 10000000;
-#else
-				e_nostatistics();
-#endif
-			}
-			else if (*arg == 'S') {
-#ifdef STATISTICS
-				if (argc--)
-					reportdelay = (u64)atoll(*argv++) * 1000000;
-				else
-					e_additional();
-#else
-				e_nostatistics();
-#endif
-			}
-			else if (*arg == 'T') {
-#ifdef STATISTICS
-				realtimestats = 0;
-#else
-				e_nostatistics();
-#endif
-			}
-			else if (*arg == 'y')
-				yamloutput = 1;
-			else if (*arg == 'Y') {
-				yamlinput = 1;
-				if (argc) {
-					--argc;
-					infile = *argv++;
-					if (!*infile)
-						infile = 0;
-					if (argc) {
-						--argc;
-						onehostname = *argv++;
-						if (!*onehostname)
-							onehostname = 0;
-						if (onehostname && strlen(onehostname) != ONION_LEN) {
-							fprintf(stderr,"bad onion argument length\n");
-							exit(1);
-						}
-					}
-				}
-			}
-#ifdef PASSPHRASE
-			else if (*arg == 'p') {
-				if (argc--) {
-					setpassphrase(*argv++);
-					deterministic = 1;
-				}
-				else
-					e_additional();
-			}
-			else if (*arg == 'P') {
-				const char *pass = getenv("PASSPHRASE");
-				if (!pass) {
-					fprintf(stderr,"store passphrase in PASSPHRASE environment variable\n");
-					exit(1);
-				}
-				setpassphrase(pass);
-				deterministic = 1;
-			}
-#endif // PASSPHRASE
-			else {
-				fprintf(stderr,"unrecognised argument: -%c\n",*arg);
-				exit(1);
-			}
-			if (numargit)
-				goto nextarg;
-		}
-		else
-			filters_add(arg);
-	}
-
-	if (yamlinput && yamloutput) {
-		fprintf(stderr,"both -y and -Y does not make sense\n");
-		exit(1);
-	}
-
-	if (yamlraw && !yamlinput && !yamloutput) {
-		fprintf(stderr,"--rawyaml requires either -y or -Y to do anything\n");
-		exit(1);
-	}
-
-	if (outfile) {
-		fout = fopen(outfile,!outfileoverwrite ? "a" : "w");
-		if (!fout) {
-			perror("failed to open output file");
-			exit(1);
-		}
-	}
-
-	if (!fout && yamloutput) {
-		fprintf(stderr,"nil output with yaml mode does not make sense\n");
-		exit(1);
-	}
-
-	if (workdir)
-		createdir(workdir,1);
-
-	direndpos = workdirlen;
-	onionendpos = workdirlen + ONION_LEN;
-
-	if (!dirnameflag) {
-		printstartpos = direndpos;
-		printlen = ONION_LEN + 1; // + '\n'
-	} else {
-		printstartpos = 0;
-		printlen = onionendpos + 1; // + '\n'
-	}
-
-	if (yamlinput) {
-		char *sname = makesname();
-		FILE *fin = stdin;
-		if (infile) {
-			fin = fopen(infile,"r");
-			if (!fin) {
-				fprintf(stderr,"failed to open input file\n");
-				return 1;
-			}
-		}
-		tret = yamlin_parseandcreate(fin,sname,onehostname,yamlraw);
-		if (infile) {
-			fclose(fin);
-			fin = 0;
-		}
-		free(sname);
-
-		if (tret)
-			return tret;
-
-		goto done;
-	}
+	wt = WT_SLOW; // Use the slow worker
+	filters_add("ooo"); // Dummy filter
+///
 
 	filters_prepare();
 
-	filters_print();
+///
+	/* Hide useless info */
+	//filters_print();
+///
 
 #ifdef STATISTICS
 	if (!filters_count() && !reportdelay)
@@ -481,9 +249,6 @@ int main(int argc,char **argv)
 		fprintf(stderr,"WARNING: -N switch will produce bogus results because we can't know filter width. reconfigure with --enable-besort and recompile.\n");
 #endif
 
-	if (yamloutput)
-		yamlout_init();
-
 	pthread_mutex_init(&keysgenerated_mutex,0);
 	pthread_mutex_init(&fout_mutex,0);
 #ifdef PASSPHRASE
@@ -491,9 +256,13 @@ int main(int argc,char **argv)
 #endif
 
 	if (numthreads <= 0) {
-		numthreads = cpucount();
-		if (numthreads <= 0)
-			numthreads = 1;
+///
+		/* Use a single thread */
+		numthreads = 1;
+		//numthreads = cpucount();
+		//if (numthreads <= 0)
+		//	numthreads = 1;
+///
 	}
 	if (!quietflag)
 		fprintf(stderr,"using %d %s\n",
