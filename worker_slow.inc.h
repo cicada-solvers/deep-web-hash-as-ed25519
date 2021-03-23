@@ -24,7 +24,7 @@ void *worker_slow(void *task)
 	memset(&pubonion,0,sizeof(pubonion));
 	memcpy(pubonion.raw,pkprefix,PKPREFIX_SIZE);
 	// write version later as it will be overwritten by hash
-	memcpy(hashsrc,checksumstr,checksumstrlen);0
+	memcpy(hashsrc,checksumstr,checksumstrlen);
 	hashsrc[checksumstrlen + PUBLIC_LEN] = 0x03; // version
 
 ///

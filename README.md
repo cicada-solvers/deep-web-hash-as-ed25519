@@ -1,9 +1,11 @@
 # Failed attempt : Interpret the deep web hash as a ed25519 secret to find its associated v3 onion address
 
+Based on https://github.com/cathugger/mkp224o/
+
 ## Modified files
 * `main.c` : force arguments
 * `worker_slow.inc.h` : changes made to print the resulting onion address, and to prevent additional onions from being generated
-* `ed25519/ed25519.h` : function 'ed25519_seckey_expand'. Originally, this function takes a random seed and creates an ed25519 secret using a 512 bits hashing algorithm. Then, it altered the secret slightly.
+* `ed25519/ed25519.h` : function 'ed25519_seckey_expand'. Originally, this function took a random seed and created an ed25519 secret using a 512 bits hashing algorithm. Then, it altered the secret slightly.
 
 All changes are commented.
 
